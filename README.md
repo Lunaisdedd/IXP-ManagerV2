@@ -6,10 +6,10 @@ Modify FFlags inside the IXP Folder, you need "Fishstrap" for it to work.
 Tutorial on how to download:
 DONT USE THIS https://youtu.be/rb3VBWrY0Iw
 
-1, press code ontop of the commit counter
+1, go to releases
 
 
-2, press "Download Zip"
+2, 
 
 
 3, right click and extract all
