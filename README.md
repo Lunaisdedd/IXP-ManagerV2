@@ -4,12 +4,13 @@ Modify FFlags inside the IXP Folder, you need "Fishstrap" for it to work.
 -- use channel Z1WAFlag
 
 Tutorial on how to download:
-DONT USE THIS https://youtu.be/rb3VBWrY0Iw
+
+(PS DO NOT DOWNLOAD THE ONE IN THE MAIN ONLY DOWNLOAD THE ONES IN RELEASES.) 
 
 1, go to releases
 
 
-2, 
+2, click "Source Code (zip)
 
 
 3, right click and extract all
