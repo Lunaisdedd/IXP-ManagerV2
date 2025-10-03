@@ -3,7 +3,7 @@ import os
 import json
 from pathlib import Path
 import tkinter as tk
-from tkinter import messagebox, scrolledtext
+from tkinter import messagebox, scrolledtext, filedialog
 
 # --- Define paths dynamically ---
 home_dir = Path.home()
@@ -13,7 +13,6 @@ filename = "IxpSettings.json"
 
 roblox_path = roblox_dir / filename
 fishstrap_path = fishstrap_dir / filename
-client_settings_path = fishstrap_dir / "ClientAppSettings.json"
 
 # --- File management functions ---
 def get_current_file_path():
@@ -93,20 +92,22 @@ def toggle_read_only():
     else:
         messagebox.showwarning("File Not Found", "Roblox IxpSettings.json not found.")
 
-def import_client_settings():
-    """Load ClientAppSettings.json into editor."""
-    if client_settings_path.exists():
+def import_json_file():
+    """Let user choose a JSON file and load it into editor."""
+    file_path = filedialog.askopenfilename(
+        title="Select JSON File",
+        filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+    )
+    if file_path:
         try:
-            with open(client_settings_path, "r", encoding="utf-8") as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             formatted = json.dumps(data, indent=4)
             text_widget.delete('1.0', tk.END)
             text_widget.insert('1.0', formatted)
-            messagebox.showinfo("Imported", "ClientAppSettings.json loaded into editor.")
+            messagebox.showinfo("Imported", f"Imported {os.path.basename(file_path)} into editor.")
         except Exception as e:
-            messagebox.showerror("Error", f"Could not load ClientAppSettings.json: {e}")
-    else:
-        messagebox.showwarning("Not Found", "ClientAppSettings.json not found in Fishstrap.")
+            messagebox.showerror("Error", f"Could not load JSON file: {e}")
 
 # --- GUI setup ---
 root = tk.Tk()
@@ -126,7 +127,7 @@ restore_button.pack(side=tk.LEFT, padx=10)
 toggle_button = tk.Button(top_frame, text="Toggle Read-Only", command=toggle_read_only)
 toggle_button.pack(side=tk.LEFT, padx=10)
 
-import_button = tk.Button(top_frame, text="Import JSON", command=import_client_settings)
+import_button = tk.Button(top_frame, text="Import JSON", command=import_json_file)
 import_button.pack(side=tk.LEFT, padx=10)
 
 # --- Text Editing Frame ---
