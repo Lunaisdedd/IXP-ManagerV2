@@ -1,7 +1,7 @@
 # IXP-Manager
 Modify FFlags inside the IXP Folder, you need "Fishstrap" for it to work.
 
--- use channel Z1WAFlag
+-- use channel Z1WAFlag (optional)
 
 Tutorial on how to download:
 
