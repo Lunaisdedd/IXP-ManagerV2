@@ -10,7 +10,7 @@ Tutorial on how to download:
 1, go to releases
 
 
-2, click "Source Code (zip)
+2, click "Source Code (zip)"
 
 
 3, right click and extract all
