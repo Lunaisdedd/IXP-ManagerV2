@@ -1,9 +1,9 @@
 # IXP-Manager
-Modify FFlags inside the IXP Folder, you need "Fishstrap" for it to work.
+Modify FFlags inside the IXP Folder, you need "Fishstrap" or any other that supports fast flag editor for it to work.
 
 -- use channel Z1WAFlag (optional)
 
-Tutorial on how to download:
+Tutorial on how to download if u didnt download the py:
 
 (PS DO NOT DOWNLOAD THE ONE IN THE MAIN ONLY DOWNLOAD THE ONES IN RELEASES.) 
 
