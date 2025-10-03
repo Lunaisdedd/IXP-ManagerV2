@@ -3,7 +3,7 @@ import os
 import json
 from pathlib import Path
 import tkinter as tk
-from tkinter import messagebox, scrolledtext, filedialog
+from tkinter import messagebox, scrolledtext, colorchooser
 
 # --- Define paths dynamically ---
 home_dir = Path.home()
@@ -13,6 +13,32 @@ filename = "IxpSettings.json"
 
 roblox_path = roblox_dir / filename
 fishstrap_path = fishstrap_dir / filename
+client_settings_path = fishstrap_dir / "ClientAppSettings.json"
+
+# --- Themes ---
+themes = {
+    "Light": {
+        "bg": "#f0f0f0", "fg": "#000000",
+        "text_bg": "#ffffff", "text_fg": "#000000",
+        "button_bg": "#e0e0e0", "button_fg": "#000000",
+    },
+    "Dark": {
+        "bg": "#212326", "fg": "#ffffff",
+        "text_bg": "#2c2f33", "text_fg": "#f8f8f8",
+        "button_bg": "#444444", "button_fg": "#ffffff",
+    },
+    "Blue": {
+        "bg": "#dce9f9", "fg": "#000033",
+        "text_bg": "#eaf2fc", "text_fg": "#001144",
+        "button_bg": "#a7c7f2", "button_fg": "#000033",
+    },
+    "Green": {
+        "bg": "#e5f5e0", "fg": "#003300",
+        "text_bg": "#f0fff0", "text_fg": "#003300",
+        "button_bg": "#a7e9af", "button_fg": "#003300",
+    }
+}
+current_theme = "Light"
 
 # --- File management functions ---
 def get_current_file_path():
@@ -92,27 +118,78 @@ def toggle_read_only():
     else:
         messagebox.showwarning("File Not Found", "Roblox IxpSettings.json not found.")
 
-def import_json_file():
-    """Let user choose a JSON file and load it into editor."""
-    file_path = filedialog.askopenfilename(
-        title="Select JSON File",
-        filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
-    )
-    if file_path:
+def import_client_settings():
+    """Load ClientAppSettings.json into editor."""
+    if client_settings_path.exists():
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(client_settings_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             formatted = json.dumps(data, indent=4)
             text_widget.delete('1.0', tk.END)
             text_widget.insert('1.0', formatted)
-            messagebox.showinfo("Imported", f"Imported {os.path.basename(file_path)} into editor.")
+            messagebox.showinfo("Imported", "ClientAppSettings.json loaded into editor.")
         except Exception as e:
-            messagebox.showerror("Error", f"Could not load JSON file: {e}")
+            messagebox.showerror("Error", f"Could not load ClientAppSettings.json: {e}")
+    else:
+        messagebox.showwarning("Not Found", "ClientAppSettings.json not found in Fishstrap.")
+
+# --- Theme functions ---
+def apply_theme(theme_name, custom_data=None):
+    global current_theme
+    current_theme = theme_name
+    theme = custom_data if custom_data else themes[theme_name]
+
+    root.config(bg=theme["bg"])
+    top_frame.config(bg=theme["bg"])
+    bottom_frame.config(bg=theme["bg"])
+    edit_frame.config(bg=theme["bg"])
+
+    text_widget.config(bg=theme["text_bg"], fg=theme["text_fg"], insertbackground=theme["fg"])
+    for btn in (move_button, restore_button, toggle_button, import_button, load_button, save_button):
+        btn.config(bg=theme["button_bg"], fg=theme["button_fg"], activebackground=theme["bg"])
+
+def open_custom_theme_editor():
+    editor = tk.Toplevel(root)
+    editor.title("Custom Theme Editor")
+
+    labels = ["Background", "Foreground", "Text BG", "Text FG", "Button BG", "Button FG"]
+    keys = ["bg", "fg", "text_bg", "text_fg", "button_bg", "button_fg"]
+    entries = {}
+
+    def pick_color(key):
+        color = colorchooser.askcolor()[1]
+        if color:
+            entries[key].delete(0, tk.END)
+            entries[key].insert(0, color)
+
+    for i, (label, key) in enumerate(zip(labels, keys)):
+        tk.Label(editor, text=label).grid(row=i, column=0, padx=5, pady=5, sticky="w")
+        entry = tk.Entry(editor, width=10)
+        entry.grid(row=i, column=1, padx=5, pady=5)
+        entries[key] = entry
+        tk.Button(editor, text="Pick", command=lambda k=key: pick_color(k)).grid(row=i, column=2, padx=5, pady=5)
+
+    def apply_custom():
+        custom = {k: entries[k].get() or "#ffffff" for k in keys}
+        apply_theme("Custom", custom)
+        editor.destroy()
+
+    tk.Button(editor, text="Apply Custom Theme", command=apply_custom).grid(row=len(labels), columnspan=3, pady=10)
 
 # --- GUI setup ---
 root = tk.Tk()
 root.title("IxpSettings Manager and Editor")
 root.geometry("750x550")
+
+# Menu bar with Themes
+menubar = tk.Menu(root)
+theme_menu = tk.Menu(menubar, tearoff=0)
+for t in themes.keys():
+    theme_menu.add_command(label=t, command=lambda name=t: apply_theme(name))
+theme_menu.add_separator()
+theme_menu.add_command(label="Custom Theme...", command=open_custom_theme_editor)
+menubar.add_cascade(label="Themes", menu=theme_menu)
+root.config(menu=menubar)
 
 # --- Top Frame for file manipulation buttons ---
 top_frame = tk.Frame(root)
@@ -127,7 +204,7 @@ restore_button.pack(side=tk.LEFT, padx=10)
 toggle_button = tk.Button(top_frame, text="Toggle Read-Only", command=toggle_read_only)
 toggle_button.pack(side=tk.LEFT, padx=10)
 
-import_button = tk.Button(top_frame, text="Import JSON", command=import_json_file)
+import_button = tk.Button(top_frame, text="Import JSON", command=import_client_settings)
 import_button.pack(side=tk.LEFT, padx=10)
 
 # --- Text Editing Frame ---
@@ -147,7 +224,8 @@ load_button.pack(side=tk.LEFT, padx=10)
 save_button = tk.Button(bottom_frame, text="Save Changes", command=save_file_content)
 save_button.pack(side=tk.LEFT, padx=10)
 
-# Initial load
+# Apply initial theme + load
+apply_theme(current_theme)
 load_file_content()
 
 # Start GUI
