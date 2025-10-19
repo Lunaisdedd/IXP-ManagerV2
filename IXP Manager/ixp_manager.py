@@ -2,190 +2,139 @@ import os
 import json
 from pathlib import Path
 import tkinter as tk
-from tkinter import messagebox, scrolledtext, colorchooser
+from tkinter import messagebox, scrolledtext
 
-# --- Define Roblox IxpSettings path dynamically ---
+# --- Define Roblox IxpSettings path ---
 home_dir = Path.home()
 roblox_dir = home_dir / "AppData" / "Local" / "Roblox" / "ClientSettings"
-filename = "IxpSettings.json"
-roblox_path = roblox_dir / filename
+ixp_path = roblox_dir / "IxpSettings.json"
 
-# --- Themes ---
-themes = {
-    "Light": {
-        "bg": "#f0f0f0", "fg": "#000000",
-        "text_bg": "#ffffff", "text_fg": "#000000",
-        "button_bg": "#e0e0e0", "button_fg": "#000000",
-    },
-    "Dark": {
-        "bg": "#212326", "fg": "#ffffff",
-        "text_bg": "#2c2f33", "text_fg": "#f8f8f8",
-        "button_bg": "#444444", "button_fg": "#ffffff",
-    },
-    "Blue": {
-        "bg": "#dce9f9", "fg": "#000033",
-        "text_bg": "#eaf2fc", "text_fg": "#001144",
-        "button_bg": "#a7c7f2", "button_fg": "#000033",
-    },
-    "Green": {
-        "bg": "#e5f5e0", "fg": "#003300",
-        "text_bg": "#f0fff0", "text_fg": "#003300",
-        "button_bg": "#a7e9af", "button_fg": "#003300",
-    }
-}
-current_theme = "Dark"
-
-# --- File management functions ---
-def ensure_file_exists():
-    """Ensure Roblox IxpSettings.json exists and is valid."""
+# --- Create file if missing or invalid ---
+def ensure_ixp_file():
     try:
         roblox_dir.mkdir(parents=True, exist_ok=True)
-        if not roblox_path.exists():
-            with open(roblox_path, "w", encoding="utf-8") as f:
+        if not ixp_path.exists():
+            with open(ixp_path, "w", encoding="utf-8") as f:
                 json.dump({}, f, indent=4)
-            messagebox.showinfo("File Created", "IxpSettings.json was missing and has been created.")
         else:
-            # Validate JSON structure
-            with open(roblox_path, "r", encoding="utf-8") as f:
+            with open(ixp_path, "r", encoding="utf-8") as f:
                 try:
                     json.load(f)
                 except json.JSONDecodeError:
-                    messagebox.showwarning(
-                        "Invalid JSON",
-                        "IxpSettings.json was corrupted — replaced with empty JSON."
-                    )
-                    with open(roblox_path, "w", encoding="utf-8") as f2:
+                    with open(ixp_path, "w", encoding="utf-8") as f2:
                         json.dump({}, f2, indent=4)
     except Exception as e:
-        messagebox.showerror("Error", f"Failed to prepare file: {e}")
+        messagebox.showerror("Error", f"Could not prepare IxpSettings.json:\n{e}")
 
-def load_file_content():
-    """Load IxpSettings.json into editor."""
-    ensure_file_exists()
+# --- Core functions ---
+def load_ixp():
+    ensure_ixp_file()
     try:
-        with open(roblox_path, "r", encoding="utf-8") as f:
-            content = f.read()
-        text_widget.delete('1.0', tk.END)
-        text_widget.insert('1.0', content)
-        messagebox.showinfo("Loaded", f"Loaded content from {roblox_path.name}")
+        with open(ixp_path, "r", encoding="utf-8") as f:
+            text_box.delete("1.0", tk.END)
+            text_box.insert("1.0", f.read())
+        messagebox.showinfo("Loaded", "Loaded IxpSettings.json successfully.")
     except Exception as e:
-        messagebox.showerror("Error", f"Could not load file: {e}")
+        messagebox.showerror("Error", f"Failed to load file:\n{e}")
 
-def save_file_content():
-    """Save editor content to IxpSettings.json (valid JSON only)."""
-    ensure_file_exists()
-    content = text_widget.get('1.0', tk.END).strip()
+def save_ixp():
+    ensure_ixp_file()
+    content = text_box.get("1.0", tk.END).strip()
     if not content:
-        messagebox.showwarning("Empty File", "Cannot save an empty file.")
+        messagebox.showwarning("Empty", "Cannot save an empty file.")
         return
     try:
-        parsed = json.loads(content)
-        with open(roblox_path, "w", encoding="utf-8") as f:
-            json.dump(parsed, f, indent=4)
-        messagebox.showinfo("Saved", f"Changes saved to {roblox_path.name} successfully!")
+        json.loads(content)  # validate
+        with open(ixp_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        messagebox.showinfo("Saved", "Saved IxpSettings.json successfully.")
     except json.JSONDecodeError as e:
-        messagebox.showerror("Invalid JSON", f"File content is not valid JSON:\n{e}")
+        messagebox.showerror("Invalid JSON", f"Invalid JSON:\n{e}")
     except Exception as e:
-        messagebox.showerror("Error", f"Could not save file: {e}")
+        messagebox.showerror("Error", f"Failed to save file:\n{e}")
 
-def toggle_read_only():
-    """Toggle read-only attribute of IxpSettings.json."""
-    ensure_file_exists()
+def toggle_readonly():
+    ensure_ixp_file()
     try:
-        writable = os.access(roblox_path, os.W_OK)
-        os.chmod(roblox_path, 0o444 if writable else 0o666)
-        state = "READ-ONLY" if writable else "WRITABLE"
-        messagebox.showinfo("Read-Only", f"IxpSettings.json set to {state}.")
+        if os.access(ixp_path, os.W_OK):
+            os.chmod(ixp_path, 0o444)
+            messagebox.showinfo("Read-Only", "IxpSettings.json set to READ-ONLY.")
+        else:
+            os.chmod(ixp_path, 0o666)
+            messagebox.showinfo("Writable", "IxpSettings.json set to WRITABLE.")
     except Exception as e:
-        messagebox.showerror("Error", f"Failed to toggle read-only: {e}")
+        messagebox.showerror("Error", f"Failed to toggle read-only:\n{e}")
 
-# --- Theme functions ---
-def apply_theme(theme_name, custom_data=None):
-    """Apply selected theme or custom colors."""
-    global current_theme
-    current_theme = theme_name
-    theme = custom_data if custom_data else themes[theme_name]
-
-    root.config(bg=theme["bg"])
-    top_frame.config(bg=theme["bg"])
-    bottom_frame.config(bg=theme["bg"])
-    edit_frame.config(bg=theme["bg"])
-
-    text_widget.config(bg=theme["text_bg"], fg=theme["text_fg"], insertbackground=theme["fg"])
-    for btn in (toggle_button, load_button, save_button):
-        btn.config(bg=theme["button_bg"], fg=theme["button_fg"], activebackground=theme["bg"])
-
-def open_custom_theme_editor():
-    """Popup to define and apply a custom color theme."""
-    editor = tk.Toplevel(root)
-    editor.title("Custom Theme Editor")
-
-    labels = ["Background", "Foreground", "Text BG", "Text FG", "Button BG", "Button FG"]
-    keys = ["bg", "fg", "text_bg", "text_fg", "button_bg", "button_fg"]
-    entries = {}
-
-    def pick_color(key):
-        color = colorchooser.askcolor()[1]
-        if color:
-            entries[key].delete(0, tk.END)
-            entries[key].insert(0, color)
-
-    for i, (label, key) in enumerate(zip(labels, keys)):
-        tk.Label(editor, text=label).grid(row=i, column=0, padx=5, pady=5, sticky="w")
-        entry = tk.Entry(editor, width=10)
-        entry.grid(row=i, column=1, padx=5, pady=5)
-        entries[key] = entry
-        tk.Button(editor, text="Pick", command=lambda k=key: pick_color(k)).grid(row=i, column=2, padx=5, pady=5)
-
-    def apply_custom():
-        custom = {k: entries[k].get() or "#ffffff" for k in keys}
-        apply_theme("Custom", custom)
-        editor.destroy()
-
-    tk.Button(editor, text="Apply Custom Theme", command=apply_custom).grid(row=len(labels), columnspan=3, pady=10)
-
-# --- GUI setup ---
+# --- UI setup ---
 root = tk.Tk()
 root.title("Roblox IxpSettings Manager")
-root.geometry("780x560")
+root.geometry("700x500")
+root.configure(bg="#1e1f22")
 
-# Menu bar
-menubar = tk.Menu(root)
-theme_menu = tk.Menu(menubar, tearoff=0)
-for t in themes.keys():
-    theme_menu.add_command(label=t, command=lambda name=t: apply_theme(name))
-theme_menu.add_separator()
-theme_menu.add_command(label="Custom Theme...", command=open_custom_theme_editor)
-menubar.add_cascade(label="Themes", menu=theme_menu)
-root.config(menu=menubar)
+# --- Styles ---
+BG = "#1e1f22"
+FG = "#f8f8f8"
+BTN_BG = "#2f3136"
+BTN_FG = "#ffffff"
+BTN_ACTIVE = "#3a3c42"
+FONT = ("Consolas", 11)
 
-# --- Top Frame ---
-top_frame = tk.Frame(root)
-top_frame.pack(pady=10)
-
-toggle_button = tk.Button(top_frame, text="Toggle Read-Only", command=toggle_read_only)
-toggle_button.pack(side=tk.LEFT, padx=10)
+# --- Title ---
+title_label = tk.Label(
+    root,
+    text="Roblox IxpSettings Manager",
+    font=("Segoe UI", 14, "bold"),
+    fg=FG,
+    bg=BG
+)
+title_label.pack(pady=(15, 5))
 
 # --- Text Editor ---
-edit_frame = tk.Frame(root)
-edit_frame.pack(padx=10, pady=5, fill=tk.BOTH, expand=True)
+text_box = scrolledtext.ScrolledText(
+    root,
+    wrap=tk.WORD,
+    bg="#2b2d31",
+    fg=FG,
+    insertbackground=FG,
+    font=FONT,
+    height=18,
+    width=80,
+    borderwidth=0,
+    relief="flat",
+)
+text_box.pack(padx=20, pady=10, fill=tk.BOTH, expand=True)
 
-text_widget = scrolledtext.ScrolledText(edit_frame, wrap=tk.WORD, font=("Consolas", 10))
-text_widget.pack(fill=tk.BOTH, expand=True)
+# --- Button Frame ---
+btn_frame = tk.Frame(root, bg=BG)
+btn_frame.pack(pady=10)
 
-# --- Bottom Frame ---
-bottom_frame = tk.Frame(root)
-bottom_frame.pack(pady=10)
+def make_btn(text, cmd):
+    return tk.Button(
+        btn_frame,
+        text=text,
+        command=cmd,
+        bg=BTN_BG,
+        fg=BTN_FG,
+        activebackground=BTN_ACTIVE,
+        activeforeground=FG,
+        relief="flat",
+        font=("Segoe UI", 10, "bold"),
+        padx=15,
+        pady=6,
+        cursor="hand2",
+    )
 
-load_button = tk.Button(bottom_frame, text="Load File", command=load_file_content)
-load_button.pack(side=tk.LEFT, padx=10)
+load_btn = make_btn("📂 Load from Ixp", load_ixp)
+save_btn = make_btn("💾 Save to Ixp", save_ixp)
+ro_btn = make_btn("🔒 Toggle Read-Only", toggle_readonly)
 
-save_button = tk.Button(bottom_frame, text="Save Changes", command=save_file_content)
-save_button.pack(side=tk.LEFT, padx=10)
+load_btn.grid(row=0, column=0, padx=8)
+save_btn.grid(row=0, column=1, padx=8)
+ro_btn.grid(row=0, column=2, padx=8)
 
-# Apply initial theme and load file
-apply_theme(current_theme)
-ensure_file_exists()
-load_file_content()
+# --- Initialize ---
+ensure_ixp_file()
+load_ixp()
 
+# --- Run ---
 root.mainloop()
