@@ -1,19 +1,14 @@
-import shutil
 import os
 import json
 from pathlib import Path
 import tkinter as tk
 from tkinter import messagebox, scrolledtext, colorchooser
 
-# --- Define paths dynamically ---
+# --- Define Roblox IxpSettings path dynamically ---
 home_dir = Path.home()
 roblox_dir = home_dir / "AppData" / "Local" / "Roblox" / "ClientSettings"
-fishstrap_dir = home_dir / "AppData" / "Local" / "Fishstrap" / "Modifications" / "ClientSettings"
 filename = "IxpSettings.json"
-
 roblox_path = roblox_dir / filename
-fishstrap_path = fishstrap_dir / filename
-client_settings_path = fishstrap_dir / "ClientAppSettings.json"
 
 # --- Themes ---
 themes = {
@@ -38,103 +33,75 @@ themes = {
         "button_bg": "#a7e9af", "button_fg": "#003300",
     }
 }
-current_theme = "Light"
+current_theme = "Dark"
 
 # --- File management functions ---
-def get_current_file_path():
-    if fishstrap_path.exists():
-        return fishstrap_path
-    elif roblox_path.exists():
-        return roblox_path
-    return None
+def ensure_file_exists():
+    """Ensure Roblox IxpSettings.json exists and is valid."""
+    try:
+        roblox_dir.mkdir(parents=True, exist_ok=True)
+        if not roblox_path.exists():
+            with open(roblox_path, "w", encoding="utf-8") as f:
+                json.dump({}, f, indent=4)
+            messagebox.showinfo("File Created", "IxpSettings.json was missing and has been created.")
+        else:
+            # Validate JSON structure
+            with open(roblox_path, "r", encoding="utf-8") as f:
+                try:
+                    json.load(f)
+                except json.JSONDecodeError:
+                    messagebox.showwarning(
+                        "Invalid JSON",
+                        "IxpSettings.json was corrupted — replaced with empty JSON."
+                    )
+                    with open(roblox_path, "w", encoding="utf-8") as f2:
+                        json.dump({}, f2, indent=4)
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to prepare file: {e}")
 
 def load_file_content():
-    """Loads IxpSettings.json into editor."""
-    current_path = get_current_file_path()
-    text_widget.delete('1.0', tk.END)
-    if current_path:
-        try:
-            with open(current_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-                text_widget.insert('1.0', content)
-            messagebox.showinfo("Loaded", f"Loaded content from {current_path.name}")
-        except Exception as e:
-            messagebox.showerror("Error", f"Could not load file: {e}")
-    else:
-        messagebox.showwarning("File Not Found", f"{filename} not found in either location.")
+    """Load IxpSettings.json into editor."""
+    ensure_file_exists()
+    try:
+        with open(roblox_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        text_widget.delete('1.0', tk.END)
+        text_widget.insert('1.0', content)
+        messagebox.showinfo("Loaded", f"Loaded content from {roblox_path.name}")
+    except Exception as e:
+        messagebox.showerror("Error", f"Could not load file: {e}")
 
 def save_file_content():
-    """Saves editor content to active IxpSettings.json."""
-    current_path = get_current_file_path()
-    if current_path:
-        try:
-            content = text_widget.get('1.0', tk.END)
-            with open(current_path, 'w', encoding='utf-8') as f:
-                f.write(content)
-            messagebox.showinfo("Saved", f"Changes saved to {current_path.name} successfully!")
-        except Exception as e:
-            messagebox.showerror("Error", f"Could not save file: {e}")
-    else:
-        messagebox.showwarning("File Not Found", "No file is active to save changes to.")
-
-def move_file():
-    """Moves IxpSettings.json from Roblox to Fishstrap."""
-    fishstrap_dir.mkdir(parents=True, exist_ok=True)
-    if roblox_path.exists():
-        try:
-            os.chmod(roblox_path, 0o666)  # remove read-only if set
-            shutil.move(roblox_path, fishstrap_path)
-            messagebox.showinfo("Success", "IxpSettings.json moved to Fishstrap successfully!")
-            load_file_content()
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to move file: {e}")
-    else:
-        messagebox.showwarning("File Not Found", "File not found in Roblox folder.")
-
-def restore_file():
-    """Restores IxpSettings.json back to Roblox (keeps current read-only state)."""
-    if fishstrap_path.exists():
-        try:
-            shutil.move(fishstrap_path, roblox_path)
-            messagebox.showinfo("Success", "IxpSettings.json restored to Roblox successfully!")
-            load_file_content()
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to restore file: {e}")
-    else:
-        messagebox.showwarning("File Not Found", "File not found in Fishstrap folder.")
+    """Save editor content to IxpSettings.json (valid JSON only)."""
+    ensure_file_exists()
+    content = text_widget.get('1.0', tk.END).strip()
+    if not content:
+        messagebox.showwarning("Empty File", "Cannot save an empty file.")
+        return
+    try:
+        parsed = json.loads(content)
+        with open(roblox_path, "w", encoding="utf-8") as f:
+            json.dump(parsed, f, indent=4)
+        messagebox.showinfo("Saved", f"Changes saved to {roblox_path.name} successfully!")
+    except json.JSONDecodeError as e:
+        messagebox.showerror("Invalid JSON", f"File content is not valid JSON:\n{e}")
+    except Exception as e:
+        messagebox.showerror("Error", f"Could not save file: {e}")
 
 def toggle_read_only():
-    """Toggle read-only attribute on Roblox IxpSettings.json."""
-    if roblox_path.exists():
-        try:
-            if os.access(roblox_path, os.W_OK):  # currently writable
-                os.chmod(roblox_path, 0o444)     # make read-only
-                messagebox.showinfo("Read-Only", "IxpSettings.json set to READ-ONLY.")
-            else:
-                os.chmod(roblox_path, 0o666)     # make writable
-                messagebox.showinfo("Read-Only", "IxpSettings.json set to WRITABLE.")
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to toggle read-only: {e}")
-    else:
-        messagebox.showwarning("File Not Found", "Roblox IxpSettings.json not found.")
-
-def import_client_settings():
-    """Load ClientAppSettings.json into editor."""
-    if client_settings_path.exists():
-        try:
-            with open(client_settings_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            formatted = json.dumps(data, indent=4)
-            text_widget.delete('1.0', tk.END)
-            text_widget.insert('1.0', formatted)
-            messagebox.showinfo("Imported", "ClientAppSettings.json loaded into editor.")
-        except Exception as e:
-            messagebox.showerror("Error", f"Could not load ClientAppSettings.json: {e}")
-    else:
-        messagebox.showwarning("Not Found", "ClientAppSettings.json not found in Fishstrap.")
+    """Toggle read-only attribute of IxpSettings.json."""
+    ensure_file_exists()
+    try:
+        writable = os.access(roblox_path, os.W_OK)
+        os.chmod(roblox_path, 0o444 if writable else 0o666)
+        state = "READ-ONLY" if writable else "WRITABLE"
+        messagebox.showinfo("Read-Only", f"IxpSettings.json set to {state}.")
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to toggle read-only: {e}")
 
 # --- Theme functions ---
 def apply_theme(theme_name, custom_data=None):
+    """Apply selected theme or custom colors."""
     global current_theme
     current_theme = theme_name
     theme = custom_data if custom_data else themes[theme_name]
@@ -145,10 +112,11 @@ def apply_theme(theme_name, custom_data=None):
     edit_frame.config(bg=theme["bg"])
 
     text_widget.config(bg=theme["text_bg"], fg=theme["text_fg"], insertbackground=theme["fg"])
-    for btn in (move_button, restore_button, toggle_button, import_button, load_button, save_button):
+    for btn in (toggle_button, load_button, save_button):
         btn.config(bg=theme["button_bg"], fg=theme["button_fg"], activebackground=theme["bg"])
 
 def open_custom_theme_editor():
+    """Popup to define and apply a custom color theme."""
     editor = tk.Toplevel(root)
     editor.title("Custom Theme Editor")
 
@@ -178,10 +146,10 @@ def open_custom_theme_editor():
 
 # --- GUI setup ---
 root = tk.Tk()
-root.title("IxpSettings Manager and Editor")
-root.geometry("750x550")
+root.title("Roblox IxpSettings Manager")
+root.geometry("780x560")
 
-# Menu bar with Themes
+# Menu bar
 menubar = tk.Menu(root)
 theme_menu = tk.Menu(menubar, tearoff=0)
 for t in themes.keys():
@@ -191,27 +159,18 @@ theme_menu.add_command(label="Custom Theme...", command=open_custom_theme_editor
 menubar.add_cascade(label="Themes", menu=theme_menu)
 root.config(menu=menubar)
 
-# --- Top Frame for file manipulation buttons ---
+# --- Top Frame ---
 top_frame = tk.Frame(root)
 top_frame.pack(pady=10)
-
-move_button = tk.Button(top_frame, text="Move to Fishstrap", command=move_file)
-move_button.pack(side=tk.LEFT, padx=10)
-
-restore_button = tk.Button(top_frame, text="Restore to Roblox", command=restore_file)
-restore_button.pack(side=tk.LEFT, padx=10)
 
 toggle_button = tk.Button(top_frame, text="Toggle Read-Only", command=toggle_read_only)
 toggle_button.pack(side=tk.LEFT, padx=10)
 
-import_button = tk.Button(top_frame, text="Import JSON", command=import_client_settings)
-import_button.pack(side=tk.LEFT, padx=10)
-
-# --- Text Editing Frame ---
+# --- Text Editor ---
 edit_frame = tk.Frame(root)
 edit_frame.pack(padx=10, pady=5, fill=tk.BOTH, expand=True)
 
-text_widget = scrolledtext.ScrolledText(edit_frame, wrap=tk.WORD, width=85, height=22, font=("Courier New", 10))
+text_widget = scrolledtext.ScrolledText(edit_frame, wrap=tk.WORD, font=("Consolas", 10))
 text_widget.pack(fill=tk.BOTH, expand=True)
 
 # --- Bottom Frame ---
@@ -224,9 +183,9 @@ load_button.pack(side=tk.LEFT, padx=10)
 save_button = tk.Button(bottom_frame, text="Save Changes", command=save_file_content)
 save_button.pack(side=tk.LEFT, padx=10)
 
-# Apply initial theme + load
+# Apply initial theme and load file
 apply_theme(current_theme)
+ensure_file_exists()
 load_file_content()
 
-# Start GUI
 root.mainloop()
